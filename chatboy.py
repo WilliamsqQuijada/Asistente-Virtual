@@ -12,6 +12,7 @@ import tempfile
 import os
 import speech_recognition as sr
 from dotenv import load_dotenv  
+import socket
 
 # Cargar variables de entorno
 load_dotenv()
@@ -71,6 +72,10 @@ def home():
             st.session_state.perfil = "Asistente de TI"
             st.session_state.page = "auditor"
 
+def is_running_local():
+    hostname = socket.gethostname()
+    return "local" in hostname.lower() or "localhost" in hostname.lower() or hostname == "your-local-hostname"  # Ajusta si querés más precisión
+
 def sidebar_config():
     with st.sidebar:
         if st.session_state.perfil:
@@ -120,17 +125,24 @@ def sidebar_config():
 
             # Grabar voz
             st.markdown("### 🎙️ Entrada por voz")
-            if st.button("🎙️ Grabar voz"):
-                recognizer = sr.Recognizer()
-                mic = sr.Microphone()
-                with mic as source:
-                    audio = recognizer.listen(source)
 
-                try:
-                    texto = recognizer.recognize_google(audio, language="es-ES")
-                    st.session_state.transcribed_voice = texto
-                except (sr.UnknownValueError, sr.RequestError):
-                    st.session_state.transcribed_voice = None
+            if is_running_local():
+                if st.button("🎙️ Grabar voz"):
+                    try:
+                        recognizer = sr.Recognizer()
+                        mic = sr.Microphone()
+                        with mic as source:
+                            audio = recognizer.listen(source)
+                        try:
+                            texto = recognizer.recognize_google(audio, language="es-ES")
+                            st.session_state.transcribed_voice = texto
+                        except (sr.UnknownValueError, sr.RequestError):
+                            st.warning("❌ No se pudo transcribir el audio.")
+                            st.session_state.transcribed_voice = None
+                    except Exception as e:
+                        st.error(f"❌ Ocurrió un error con el micrófono: {e}")
+            else:
+                st.info("🎙️ La entrada por voz no está disponible en servidores, ya que no tienen acceso a micrófono.")
 
             # Chats
             st.markdown("### 💬 Tus chats")
